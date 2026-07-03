@@ -1,0 +1,29 @@
+# Node dependencies
+node_modules/
+
+# Environment secrets (DO NOT upload these)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Local IDE files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Expo & Android build outputs
+.expo/
+local.properties
+.gradle/
+build/
+*.apk
+*.aab

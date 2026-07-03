@@ -3,16 +3,31 @@ import axios from 'axios';
 import {
   LogIn, UserPlus, LogOut, BookOpen, Plus,
   FileText, Play, CheckCircle2, User,
-  Clock, ShieldAlert, Users, Award, Eye, EyeOff, Sun, Moon
+  Clock, ShieldAlert, Users, Award, Eye, EyeOff, Sun, Moon, Settings
 } from 'lucide-react';
 
-const API_BASE = 'http://localhost:5000/api';
+let API_BASE = localStorage.getItem('api_base') || (
+  (window.location.hostname === 'localhost' && window.location.port !== '5173' && window.location.port !== '3000' && window.location.port !== '')
+    ? 'http://localhost:5000/api'
+    : 'http://10.0.2.2:5000/api'
+);
 
 export default function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [token, setToken] = useState(localStorage.getItem('token') || '');
   const [currentUser, setCurrentUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
   const [view, setView] = useState('login'); // login, register, admin, instructor, student, exam-runner
+
+  // Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsApiBase, setSettingsApiBase] = useState(API_BASE);
+
+  const saveSettings = () => {
+    localStorage.setItem('api_base', settingsApiBase);
+    API_BASE = settingsApiBase;
+    setShowSettings(false);
+    alert('API Base URL updated to: ' + settingsApiBase);
+  };
 
   // Login State
   const [loginUsername, setLoginUsername] = useState('');
@@ -476,6 +491,15 @@ export default function App() {
             </span>
             <button
               className="btn btn-secondary"
+              onClick={() => { setSettingsApiBase(API_BASE); setShowSettings(true); }}
+              style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              title="API Settings"
+            >
+              <Settings size={16} />
+              <span>Settings</span>
+            </button>
+            <button
+              className="btn btn-secondary"
               onClick={toggleTheme}
               style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
@@ -495,15 +519,24 @@ export default function App() {
       {view === 'login' && (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '420px', position: 'relative' }}>
-            <button
-              className="btn btn-secondary"
-              onClick={toggleTheme}
-              style={{ position: 'absolute', top: '16px', right: '16px', padding: '6px 10px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
-              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
-            >
-              {theme === 'dark' ? <Sun size={14} style={{ color: '#f59e0b' }} /> : <Moon size={14} style={{ color: '#6366f1' }} />}
-              <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
-            </button>
+            <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', gap: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setSettingsApiBase(API_BASE); setShowSettings(true); }}
+                style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
+                title="API Settings"
+              >
+                <Settings size={14} />
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={toggleTheme}
+                style={{ padding: '6px 10px', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
+                title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+              >
+                {theme === 'dark' ? <Sun size={14} style={{ color: '#f59e0b' }} /> : <Moon size={14} style={{ color: '#6366f1' }} />}
+              </button>
+            </div>
             <div style={{ textAlign: 'center', marginBottom: '24px' }}>
               <div className="nav-logo" style={{ justifyContent: 'center', marginBottom: '8px' }}>
                 <Award size={32} />
@@ -1488,6 +1521,62 @@ export default function App() {
       <footer style={{ marginTop: 'auto', padding: '24px', textAlign: 'center', borderTop: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
         <span>&copy; 2026 Online Exam System. All Rights Reserved.</span>
       </footer>
+
+      {/* SETTINGS MODAL */}
+      {showSettings && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '24px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+            <h3 style={{ fontSize: '1.25rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+              <Settings size={20} style={{ color: 'var(--primary)' }} />
+              <span>API Connection Settings</span>
+            </h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                Backend API Base URL
+              </label>
+              <input
+                type="text"
+                value={settingsApiBase}
+                onChange={(e) => setSettingsApiBase(e.target.value)}
+                placeholder="http://localhost:5000/api"
+                style={{ width: '100%', padding: '10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-input)', color: 'var(--text-primary)' }}
+              />
+              <p style={{ fontSize: '0.75rem', marginTop: '8px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                Use <code>http://10.0.2.2:5000/api</code> for Android Emulator loopback, or your computer's local IP address (e.g. <code>http://192.168.x.x:5000/api</code>) if testing on a physical device.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowSettings(false)}
+                style={{ padding: '8px 16px' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={saveSettings}
+                style={{ padding: '8px 16px', backgroundColor: 'var(--primary)', color: '#ffffff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

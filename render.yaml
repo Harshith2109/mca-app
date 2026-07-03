@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: exam-system-api
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: USERS_FILE_PATH
+        value: ./users.json
+      - key: MOODLE_URL
+        sync: false
+      - key: MOODLE_TOKEN
+        sync: false
