@@ -437,7 +437,8 @@ export default function App() {
     }
   };
 
-  const handleStartExam = async (exam) => {
+  const handleStartExam = async (exam, instructorIdParam = null) => {
+    const finalInstructorId = instructorIdParam || activeInstructorId;
     Alert.alert(
       'Start Exam',
       `Are you ready to start taking "${exam.exam_name}"?\nDuration: ${Math.round(exam.duration / 60)} mins`,
@@ -452,11 +453,12 @@ export default function App() {
                 method: 'POST',
                 body: {
                   student_id: currentUser.userId,
-                  instructor_id: String(activeInstructorId)
+                  instructor_id: String(finalInstructorId)
                 }
               });
 
               setActiveExam(exam);
+              setActiveInstructorId(finalInstructorId);
               setActiveAttemptId(res.attempt.attempt_id);
               setQuestions(exam.questions || []);
               setCurrentQuestionIndex(0);
@@ -1149,11 +1151,15 @@ export default function App() {
                         <View key={ex.exam_id || i} style={styles.listItem}>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.itemTitle}>{ex.exam_name}</Text>
-                            <Text style={styles.itemSubtitle}>Course: {ex.course_id} • Duration: {Math.round(ex.duration / 60)} min</Text>
+                            <Text style={styles.itemSubtitle}>Course: {ex.course_id} • Instructor: {ex.instructor_id}</Text>
+                            <Text style={styles.itemSubtitle}>Duration: {Math.round(ex.duration / 60)} min</Text>
                           </View>
-                          <View style={{ backgroundColor: '#22c55e', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4 }}>
-                            <Text style={{ color: '#09090b', fontSize: 10, fontWeight: 'bold' }}>RUNNING</Text>
-                          </View>
+                          <TouchableOpacity 
+                            style={styles.activeChip} 
+                            onPress={() => handleStartExam(ex, ex.instructor_id)}
+                          >
+                            <Text style={styles.activeChipText}>Attempt</Text>
+                          </TouchableOpacity>
                         </View>
                       ))
                     )}
