@@ -246,11 +246,15 @@ exports.submitExam = async (req, res) => {
       }
     });
 
+    const hasManualQuestions = exam.questions.some(
+      q => q.question_type === 'short_answer' || q.question_type === 'essay'
+    );
+
     const score = totalMarks > 0 ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
     const isPassed = score >= exam.passing_marks;
 
     attempt.score = score;
-    attempt.status = 'graded';
+    attempt.status = hasManualQuestions ? 'submitted' : 'graded';
     attempt.end_time = new Date();
     await attempt.save();
 

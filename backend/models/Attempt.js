@@ -26,6 +26,11 @@ const AttemptSchema = new mongoose.Schema({
     of: String,
     default: {}
   },
+  question_scores: {
+    type: Map,
+    of: Number,
+    default: {}
+  },
   score: {
     type: Number,
     default: 0

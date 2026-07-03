@@ -1291,11 +1291,15 @@ export default function App() {
                             <View key={at.attempt_id || i} style={[styles.listItem, { paddingVertical: 10 }]}>
                               <View style={{ flex: 1 }}>
                                 <Text style={styles.itemTitle}>Student ID: {at.student_id}</Text>
-                                <Text style={styles.itemSubtitle}>Score: {at.score}% • Status: {at.status}</Text>
+                                <Text style={styles.itemSubtitle}>{at.status === 'submitted' ? 'Pending Evaluation' : `Score: ${at.score}% • Status: ${at.status}`}</Text>
                               </View>
                               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                                <Text style={{ color: at.score >= (viewingAttemptsExam?.passing_marks || 40) ? '#10b981' : '#ef4444', fontWeight: 'bold', fontSize: 12 }}>
-                                  {at.score >= (viewingAttemptsExam?.passing_marks || 40) ? 'PASSED' : 'FAILED'}
+                                <Text style={{ 
+                                  color: at.status === 'submitted' ? '#f59e0b' : (at.score >= (viewingAttemptsExam?.passing_marks || 40) ? '#10b981' : '#ef4444'), 
+                                  fontWeight: 'bold', 
+                                  fontSize: 12 
+                                }}>
+                                  {at.status === 'submitted' ? 'PENDING' : (at.score >= (viewingAttemptsExam?.passing_marks || 40) ? 'PASSED' : 'FAILED')}
                                 </Text>
                                 <TouchableOpacity
                                   style={[styles.smallButton, { backgroundColor: '#6366f1', paddingHorizontal: 10 }]}
@@ -1418,10 +1422,14 @@ export default function App() {
                         <View key={at.attempt_id || i} style={styles.listItem}>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.itemTitle}>Exam ID: {at.exam_id}</Text>
-                            <Text style={styles.itemSubtitle}>Score: {at.score}% • Status: {at.status}</Text>
+                            <Text style={styles.itemSubtitle}>{at.status === 'submitted' ? 'Grading In Progress' : `Score: ${at.score}% • Status: ${at.status}`}</Text>
                           </View>
-                          <Text style={{ color: at.status === 'submitted' || at.score >= 50 ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>
-                            {at.score}%
+                          <Text style={{ 
+                            color: at.status === 'submitted' ? '#f59e0b' : (at.score >= 50 ? '#10b981' : '#ef4444'), 
+                            fontWeight: 'bold',
+                            fontSize: 12
+                          }}>
+                            {at.status === 'submitted' ? 'PENDING' : `${at.score}%`}
                           </Text>
                         </View>
                       ))

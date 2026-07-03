@@ -341,6 +341,9 @@ exports.gradeAttempt = async (req, res) => {
     if (!attempt) {
       return res.status(404).json({ error: 'Attempt not found' });
     }
+    if (!attempt.question_scores) {
+      attempt.question_scores = new Map();
+    }
 
     const exam = await Exam.findOne({ exam_id });
     if (!exam) {
@@ -356,8 +359,31 @@ exports.gradeAttempt = async (req, res) => {
         const studentAns = attempt.answers ? attempt.answers.get(qIdStr) : undefined;
         let autoMark = 0;
         if (studentAns !== undefined && studentAns !== null) {
-          if (q.question_type === 'multiple_choice' && String(studentAns) === String(q.correct_answer)) {
-            autoMark = Number(q.marks);
+          if (q.question_type === 'multiple_choice') {
+            const studentAnsStr = String(studentAns).trim().toLowerCase();
+            const correctAnsStr = String(q.correct_answer).trim().toLowerCase();
+            
+            let optTextForCorrectIndex = '';
+            if (q.options instanceof Map) {
+              optTextForCorrectIndex = String(q.options.get(correctAnsStr) || '').trim().toLowerCase();
+            } else if (q.options && typeof q.options === 'object') {
+              optTextForCorrectIndex = String(q.options[correctAnsStr] || '').trim().toLowerCase();
+            }
+
+            let optTextForStudentIndex = '';
+            if (q.options instanceof Map) {
+              optTextForStudentIndex = String(q.options.get(studentAnsStr) || '').trim().toLowerCase();
+            } else if (q.options && typeof q.options === 'object') {
+              optTextForStudentIndex = String(q.options[studentAnsStr] || '').trim().toLowerCase();
+            }
+
+            if (
+              studentAnsStr === correctAnsStr || 
+              (optTextForCorrectIndex && studentAnsStr === optTextForCorrectIndex) ||
+              (optTextForStudentIndex && optTextForStudentIndex === correctAnsStr)
+            ) {
+              autoMark = Number(q.marks);
+            }
           } else if (q.question_type === 'true_false' && String(studentAns).toLowerCase() === String(q.correct_answer).toLowerCase()) {
             autoMark = Number(q.marks);
           }
