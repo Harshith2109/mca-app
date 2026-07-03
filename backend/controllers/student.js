@@ -213,7 +213,28 @@ exports.submitExam = async (req, res) => {
         const correctAns = question.correct_answer;
 
         if (question.question_type === 'multiple_choice') {
-          if (String(studentAns) === String(correctAns)) {
+          const studentAnsStr = String(studentAns).trim().toLowerCase();
+          const correctAnsStr = String(correctAns).trim().toLowerCase();
+          
+          let optTextForCorrectIndex = '';
+          if (question.options instanceof Map) {
+            optTextForCorrectIndex = String(question.options.get(correctAnsStr) || '').trim().toLowerCase();
+          } else if (question.options && typeof question.options === 'object') {
+            optTextForCorrectIndex = String(question.options[correctAnsStr] || '').trim().toLowerCase();
+          }
+
+          let optTextForStudentIndex = '';
+          if (question.options instanceof Map) {
+            optTextForStudentIndex = String(question.options.get(studentAnsStr) || '').trim().toLowerCase();
+          } else if (question.options && typeof question.options === 'object') {
+            optTextForStudentIndex = String(question.options[studentAnsStr] || '').trim().toLowerCase();
+          }
+
+          if (
+            studentAnsStr === correctAnsStr || 
+            (optTextForCorrectIndex && studentAnsStr === optTextForCorrectIndex) ||
+            (optTextForStudentIndex && optTextForStudentIndex === correctAnsStr)
+          ) {
             obtainedMarks += question.marks;
           }
         } else if (question.question_type === 'true_false') {

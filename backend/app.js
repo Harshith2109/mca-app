@@ -50,6 +50,7 @@ app.put('/api/instructor/:instructor_id/exams/:exam_id/activate', instructorCont
 app.put('/api/instructor/:instructor_id/exams/:exam_id/deactivate', instructorController.deactivateExam);
 app.put('/api/instructor/:instructor_id/exams/:exam_id', instructorController.updateExam);
 app.get('/api/instructor/:instructor_id/exams/:exam_id/attempts', instructorController.getExamAttempts);
+app.put('/api/instructor/:instructor_id/exams/:exam_id/attempts/:attempt_id/grade', instructorController.gradeAttempt);
 app.get('/api/instructor/:instructor_id/exams', instructorController.getExams);
 
 // ==================== STUDENT ENDPOINTS ====================

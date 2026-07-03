@@ -250,6 +250,9 @@ export default function App() {
   const [eligibleStudents, setEligibleStudents] = useState('');
   const [examAttempts, setExamAttempts] = useState([]);
   const [viewingAttemptsExam, setViewingAttemptsExam] = useState(null);
+  const [editingExam, setEditingExam] = useState(null);
+  const [evaluatingAttempt, setEvaluatingAttempt] = useState(null);
+  const [evaluatingScores, setEvaluatingScores] = useState({});
 
   const loadInstructorData = async () => {
     if (view !== 'instructor') return;
@@ -362,6 +365,79 @@ export default function App() {
       loadInstructorData();
     } catch (err) {
       Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateExam = async () => {
+    if (!editingExam.exam_name) {
+      Alert.alert('Error', 'Exam Name is required');
+      return;
+    }
+    setLoading(true);
+    try {
+      await apiCall(`/instructor/${currentUser.userId}/exams/${editingExam.exam_id}`, {
+        method: 'PUT',
+        body: {
+          exam_name: editingExam.exam_name,
+          description: editingExam.description,
+          duration: parseInt(editingExam.duration),
+          total_marks: parseInt(editingExam.total_marks),
+          passing_marks: parseInt(editingExam.passing_marks)
+        }
+      });
+      Alert.alert('Success', 'Exam updated successfully');
+      setEditingExam(null);
+      loadInstructorData();
+    } catch (err) {
+      Alert.alert('Error', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEvaluate = (attempt) => {
+    setEvaluatingAttempt(attempt);
+    const initialScores = {};
+    if (viewingAttemptsExam && viewingAttemptsExam.questions) {
+      viewingAttemptsExam.questions.forEach(q => {
+        const qIdStr = String(q.question_id);
+        let existingScore = '';
+        if (attempt.question_scores) {
+          if (attempt.question_scores instanceof Map) {
+            existingScore = attempt.question_scores.get(qIdStr);
+          } else if (typeof attempt.question_scores === 'object') {
+            existingScore = attempt.question_scores[qIdStr];
+          }
+        }
+        initialScores[qIdStr] = existingScore !== undefined && existingScore !== null ? String(existingScore) : '';
+      });
+    }
+    setEvaluatingScores(initialScores);
+  };
+
+  const handleSaveEvaluation = async () => {
+    setLoading(true);
+    try {
+      const parsedScores = {};
+      Object.entries(evaluatingScores).forEach(([qId, val]) => {
+        if (val !== '') {
+          parsedScores[qId] = Number(val);
+        }
+      });
+
+      await apiCall(`/instructor/${currentUser.userId}/exams/${viewingAttemptsExam.exam_id}/attempts/${evaluatingAttempt.attempt_id}/grade`, {
+        method: 'PUT',
+        body: { question_scores: parsedScores }
+      });
+
+      Alert.alert('Success', 'Attempt evaluated successfully');
+      setEvaluatingAttempt(null);
+      const data = await apiCall(`/instructor/${currentUser.userId}/exams/${viewingAttemptsExam.exam_id}/attempts`);
+      setExamAttempts(data.attempts || []);
+    } catch (err) {
+      Alert.alert('Evaluation Error', err.message);
     } finally {
       setLoading(false);
     }
@@ -877,36 +953,57 @@ export default function App() {
                     {/* INSTRUCTOR EXAMS LIST */}
                     <View style={styles.card}>
                       <Text style={styles.sectionTitle}>Your Exam Papers</Text>
-                      {exams.map((ex, i) => (
-                        <View key={ex.exam_id || i} style={styles.examCard}>
-                          <Text style={styles.itemTitle}>{ex.exam_name}</Text>
-                          <Text style={styles.itemSubtitle}>Course: {ex.course_id} • Duration: {Math.round(ex.duration / 60)} min • Total Questions: {ex.questions?.length || 0}</Text>
-                          <View style={styles.examCardActions}>
-                            <TouchableOpacity
-                              style={[styles.smallButton, { backgroundColor: ex.is_active ? '#eab308' : '#22c55e' }]}
-                              onPress={() => handleToggleExamActive(ex)}
-                            >
-                              <Text style={{ color: '#09090b', fontWeight: 'bold', fontSize: 12 }}>
-                                {ex.is_active ? 'Deactivate' : 'Publish'}
+                      {exams.map((ex, i) => {
+                        const combinedMarks = ex.questions?.reduce((sum, q) => sum + (Number(q.marks) || 0), 0) || 0;
+                        const intendedTotal = Number(ex.total_marks) || 0;
+                        const marksMismatch = combinedMarks !== intendedTotal;
+
+                        return (
+                          <View key={ex.exam_id || i} style={styles.examCard}>
+                            <Text style={styles.itemTitle}>{ex.exam_name}</Text>
+                            <Text style={styles.itemSubtitle}>Course: {ex.course_id} • Duration: {Math.round(ex.duration / 60)} min • Questions: {ex.questions?.length || 0}</Text>
+                            <Text style={styles.itemSubtitle}>Intended Marks: {intendedTotal} • Added Marks: {combinedMarks}</Text>
+                            
+                            {marksMismatch && (
+                              <Text style={{ color: '#ef4444', fontSize: 11, fontWeight: 'bold', marginTop: 4 }}>
+                                ⚠️ Marks Mismatch! Sum ({combinedMarks}) must equal total ({intendedTotal}).
                               </Text>
-                            </TouchableOpacity>
+                            )}
 
-                            <TouchableOpacity
-                              style={[styles.smallButton, { backgroundColor: '#6366f1' }]}
-                              onPress={() => setAddingQuestionExamId(ex.exam_id)}
-                            >
-                              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>+ Question</Text>
-                            </TouchableOpacity>
+                            <View style={styles.examCardActions}>
+                              <TouchableOpacity
+                                style={[styles.smallButton, { backgroundColor: ex.is_active ? '#eab308' : '#22c55e' }]}
+                                onPress={() => handleToggleExamActive(ex)}
+                              >
+                                <Text style={{ color: '#09090b', fontWeight: 'bold', fontSize: 12 }}>
+                                  {ex.is_active ? 'Deactivate' : 'Publish'}
+                                </Text>
+                              </TouchableOpacity>
 
-                            <TouchableOpacity
-                              style={[styles.smallButton, { backgroundColor: '#27272a' }]}
-                              onPress={() => handleViewAttempts(ex)}
-                            >
-                              <Text style={{ color: '#fff', fontSize: 12 }}>Attempts</Text>
-                            </TouchableOpacity>
+                              <TouchableOpacity
+                                style={[styles.smallButton, { backgroundColor: '#6366f1' }]}
+                                onPress={() => setAddingQuestionExamId(ex.exam_id)}
+                              >
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 12 }}>+ Question</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.smallButton, { backgroundColor: '#3f3f46' }]}
+                                onPress={() => setEditingExam(ex)}
+                              >
+                                <Text style={{ color: '#fff', fontSize: 12 }}>Edit</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                style={[styles.smallButton, { backgroundColor: '#27272a' }]}
+                                onPress={() => handleViewAttempts(ex)}
+                              >
+                                <Text style={{ color: '#fff', fontSize: 12 }}>Attempts</Text>
+                              </TouchableOpacity>
+                            </View>
                           </View>
-                        </View>
-                      ))}
+                        );
+                      })}
                     </View>
                   </View>
                 )}
@@ -976,6 +1073,66 @@ export default function App() {
                       </TouchableOpacity>
                       <TouchableOpacity style={{ flex: 1, padding: 12, backgroundColor: '#6366f1', borderRadius: 8, alignItems: 'center' }} onPress={handleAddQuestion}>
                         <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save Question</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* EDIT EXAM MODAL CARD OVERLAY */}
+                {editingExam && (
+                  <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>Edit Exam (ID: {editingExam.exam_id})</Text>
+
+                    <Text style={styles.label}>Exam Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingExam.exam_name}
+                      onChangeText={val => setEditingExam(p => ({ ...p, exam_name: val }))}
+                    />
+
+                    <Text style={styles.label}>Description</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={editingExam.description || ''}
+                      onChangeText={val => setEditingExam(p => ({ ...p, description: val }))}
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Duration (sec)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={String(editingExam.duration)}
+                          onChangeText={val => setEditingExam(p => ({ ...p, duration: val }))}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Total Marks</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={String(editingExam.total_marks)}
+                          onChangeText={val => setEditingExam(p => ({ ...p, total_marks: val }))}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.label}>Passing Marks (%)</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={String(editingExam.passing_marks)}
+                          onChangeText={val => setEditingExam(p => ({ ...p, passing_marks: val }))}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                      <TouchableOpacity style={{ flex: 1, padding: 12, backgroundColor: '#27272a', borderRadius: 8, alignItems: 'center' }} onPress={() => setEditingExam(null)}>
+                        <Text style={{ color: '#fff' }}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={{ flex: 1, padding: 12, backgroundColor: '#6366f1', borderRadius: 8, alignItems: 'center' }} onPress={handleUpdateExam}>
+                        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Save Changes</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -1052,24 +1209,93 @@ export default function App() {
                 )}
 
                 {instructorTab === 'attempts' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>
-                      {viewingAttemptsExam ? `Submissions: ${viewingAttemptsExam.exam_name}` : 'Select an exam from Manage tab'}
-                    </Text>
-                    {examAttempts.length === 0 ? (
-                      <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>No submissions found for this exam.</Text>
-                    ) : (
-                      examAttempts.map((at, i) => (
-                        <View key={at.attempt_id || i} style={styles.listItem}>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.itemTitle}>Student ID: {at.student_id}</Text>
-                            <Text style={styles.itemSubtitle}>Score: {at.score}% • Status: {at.status}</Text>
-                          </View>
-                          <Text style={{ color: at.score >= (viewingAttemptsExam?.passing_marks || 40) ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>
-                            {at.score >= (viewingAttemptsExam?.passing_marks || 40) ? 'PASSED' : 'FAILED'}
-                          </Text>
+                  <View style={{ flex: 1 }}>
+                    {evaluatingAttempt ? (
+                      <View style={styles.card}>
+                        <Text style={styles.sectionTitle}>Evaluate Attempt: ID #{evaluatingAttempt.attempt_id}</Text>
+                        <Text style={{ color: '#a1a1aa', fontSize: 12, marginBottom: 16 }}>Student ID: {evaluatingAttempt.student_id}</Text>
+
+                        <ScrollView style={{ maxHeight: 400, marginBottom: 16 }}>
+                          {(viewingAttemptsExam?.questions || []).map((q, idx) => {
+                            const qIdStr = String(q.question_id);
+                            let studentAns = '';
+                            if (evaluatingAttempt.answers) {
+                              if (evaluatingAttempt.answers instanceof Map) {
+                                studentAns = evaluatingAttempt.answers.get(qIdStr);
+                              } else if (typeof evaluatingAttempt.answers === 'object') {
+                                studentAns = evaluatingAttempt.answers[qIdStr];
+                              }
+                            }
+                            
+                            let displayAnswer = studentAns;
+                            if (q.question_type === 'multiple_choice' && studentAns !== undefined) {
+                              let optionText = '';
+                              if (q.options instanceof Map) {
+                                optionText = q.options.get(studentAns);
+                              } else if (q.options && typeof q.options === 'object') {
+                                optionText = q.options[studentAns];
+                              }
+                              displayAnswer = optionText ? `[Choice Index ${studentAns}] ${optionText}` : studentAns;
+                            }
+
+                            return (
+                              <View key={q.question_id || idx} style={{ borderBottomWidth: 1, borderBottomColor: '#27272a', paddingVertical: 12 }}>
+                                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 13 }}>Q{idx + 1}: {q.question_text}</Text>
+                                <Text style={{ color: '#a1a1aa', fontSize: 11, marginTop: 4 }}>Type: {q.question_type.toUpperCase()} • Max Marks: {q.marks}</Text>
+                                <Text style={{ color: '#38bdf8', fontSize: 12, marginTop: 6, fontWeight: '500' }}>Student's Answer: {displayAnswer || '(No answer submitted)'}</Text>
+                                
+                                <Text style={[styles.label, { marginTop: 8 }]}>Assign Marks (0 - {q.marks}):</Text>
+                                <TextInput
+                                  style={[styles.input, { marginBottom: 0, paddingVertical: 6 }]}
+                                  placeholder={`Score (Max ${q.marks})`}
+                                  placeholderTextColor="#71717a"
+                                  value={evaluatingScores[qIdStr] || ''}
+                                  onChangeText={val => setEvaluatingScores(prev => ({ ...prev, [qIdStr]: val }))}
+                                  keyboardType="numeric"
+                                />
+                              </View>
+                            );
+                          })}
+                        </ScrollView>
+
+                        <View style={{ flexDirection: 'row', gap: 10 }}>
+                          <TouchableOpacity style={{ flex: 1, padding: 12, backgroundColor: '#27272a', borderRadius: 8, alignItems: 'center' }} onPress={() => setEvaluatingAttempt(null)}>
+                            <Text style={{ color: '#fff' }}>Cancel</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity style={{ flex: 1, padding: 12, backgroundColor: '#10b981', borderRadius: 8, alignItems: 'center' }} onPress={handleSaveEvaluation}>
+                            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Finalize Grade</Text>
+                          </TouchableOpacity>
                         </View>
-                      ))
+                      </View>
+                    ) : (
+                      <View style={styles.card}>
+                        <Text style={styles.sectionTitle}>
+                          {viewingAttemptsExam ? `Submissions: ${viewingAttemptsExam.exam_name}` : 'Select an exam from Manage tab'}
+                        </Text>
+                        {examAttempts.length === 0 ? (
+                          <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>No submissions found for this exam.</Text>
+                        ) : (
+                          examAttempts.map((at, i) => (
+                            <View key={at.attempt_id || i} style={[styles.listItem, { paddingVertical: 10 }]}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.itemTitle}>Student ID: {at.student_id}</Text>
+                                <Text style={styles.itemSubtitle}>Score: {at.score}% • Status: {at.status}</Text>
+                              </View>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <Text style={{ color: at.score >= (viewingAttemptsExam?.passing_marks || 40) ? '#10b981' : '#ef4444', fontWeight: 'bold', fontSize: 12 }}>
+                                  {at.score >= (viewingAttemptsExam?.passing_marks || 40) ? 'PASSED' : 'FAILED'}
+                                </Text>
+                                <TouchableOpacity
+                                  style={[styles.smallButton, { backgroundColor: '#6366f1', paddingHorizontal: 10 }]}
+                                  onPress={() => handleOpenEvaluate(at)}
+                                >
+                                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: 'bold' }}>Evaluate</Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          ))
+                        )}
+                      </View>
                     )}
                   </View>
                 )}
