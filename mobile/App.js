@@ -1251,25 +1251,55 @@ export default function App() {
                     {/* MCQs Option Render */}
                     {questions[currentQuestionIndex].question_type === 'multiple_choice' && (
                       <View style={{ marginTop: 16 }}>
-                        {(questions[currentQuestionIndex].options || []).map((opt, oIdx) => (
+                        {Object.entries(questions[currentQuestionIndex].options || {}).map(([key, opt]) => (
                           <TouchableOpacity
-                            key={oIdx}
+                            key={key}
                             style={[
                               styles.optionButton,
-                              studentAnswers[questions[currentQuestionIndex].question_id] === opt && styles.optionButtonActive
+                              String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(key) && styles.optionButtonActive
                             ]}
-                            onPress={() => handleSaveAnswer(questions[currentQuestionIndex].question_id, opt)}
+                            onPress={() => handleSaveAnswer(questions[currentQuestionIndex].question_id, key)}
                           >
                             <Ionicons
-                              name={studentAnswers[questions[currentQuestionIndex].question_id] === opt ? 'radio-button-on' : 'radio-button-off'}
+                              name={String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(key) ? 'radio-button-on' : 'radio-button-off'}
                               size={18}
-                              color={studentAnswers[questions[currentQuestionIndex].question_id] === opt ? '#6366f1' : '#a1a1aa'}
+                              color={String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(key) ? '#6366f1' : '#a1a1aa'}
                             />
                             <Text style={[
                               styles.optionText,
-                              studentAnswers[questions[currentQuestionIndex].question_id] === opt && styles.optionTextActive
+                              String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(key) && styles.optionTextActive
                             ]}>
                               {opt}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* True / False Option Render */}
+                    {questions[currentQuestionIndex].question_type === 'true_false' && (
+                      <View style={{ marginTop: 16, flexDirection: 'row', gap: 12 }}>
+                        {['true', 'false'].map((val) => (
+                          <TouchableOpacity
+                            key={val}
+                            style={[
+                              styles.optionButton,
+                              { flex: 1 },
+                              String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(val) && styles.optionButtonActive
+                            ]}
+                            onPress={() => handleSaveAnswer(questions[currentQuestionIndex].question_id, val)}
+                          >
+                            <Ionicons
+                              name={String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(val) ? 'radio-button-on' : 'radio-button-off'}
+                              size={18}
+                              color={String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(val) ? '#6366f1' : '#a1a1aa'}
+                            />
+                            <Text style={[
+                              styles.optionText,
+                              { textTransform: 'capitalize' },
+                              String(studentAnswers[questions[currentQuestionIndex].question_id]) === String(val) && styles.optionTextActive
+                            ]}>
+                              {val}
                             </Text>
                           </TouchableOpacity>
                         ))}
