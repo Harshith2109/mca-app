@@ -17,7 +17,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 
 // Default target to local Android emulator host (10.0.2.2) or custom saved base
-let GLOBAL_API_BASE = 'http://10.0.2.2:5000/api';
+let GLOBAL_API_BASE = 'https://exam-system-api-d7s6.onrender.com/api';
 
 export default function App() {
   const [theme, setTheme] = useState('dark'); // dark, light
@@ -60,7 +60,7 @@ export default function App() {
     if (options.body && typeof options.body === 'object') {
       config.body = JSON.stringify(options.body);
     }
-    
+
     try {
       const res = await fetch(url, config);
       const data = await res.json();
@@ -96,7 +96,7 @@ export default function App() {
       });
       setToken(data.token);
       setCurrentUser(data.user);
-      
+
       // Initialize workspace logic for instructor/student
       if (data.user.role === 'instructor') {
         await apiCall('/instructor/init', {
@@ -303,10 +303,10 @@ export default function App() {
     }
     setLoading(true);
     try {
-      const parsedOptions = question_type === 'multiple_choice' 
+      const parsedOptions = question_type === 'multiple_choice'
         ? options.split(',').map(s => s.trim()).filter(Boolean)
         : [];
-      
+
       await apiCall(`/instructor/${currentUser.userId}/exams/${addingQuestionExamId}/questions`, {
         method: 'POST',
         body: {
@@ -338,7 +338,7 @@ export default function App() {
       const studentIds = eligibleStudents.split(',').map(s => s.trim()).filter(Boolean);
       await apiCall(`/instructor/${currentUser.userId}/exams/${eligibilityExamId}/students`, {
         method: 'POST',
-        body: { students: studentIds }
+        body: { student_ids: studentIds }
       });
       Alert.alert('Success', 'Students enrolled successfully');
       setEligibilityExamId('');
@@ -404,7 +404,7 @@ export default function App() {
     try {
       const ongoing = await apiCall(`/student/exams/ongoing?search=${encodeURIComponent(studentSearch)}`);
       setOngoingExams(ongoing.exams || []);
-      
+
       const attempts = await apiCall(`/student/${currentUser.userId}/attempts`);
       setStudentAttempts(attempts.attempts || []);
     } catch (err) {
@@ -455,7 +455,7 @@ export default function App() {
                   instructor_id: String(activeInstructorId)
                 }
               });
-              
+
               setActiveExam(exam);
               setActiveAttemptId(res.attempt.attempt_id);
               setQuestions(exam.questions || []);
@@ -506,12 +506,14 @@ export default function App() {
       Alert.alert(
         'Exam Submitted!',
         `Your score: ${res.result.score}%\nFeedback: ${res.feedback || 'None'}`,
-        [{ text: 'OK', onPress: () => {
-          setView('student');
-          setActiveExam(null);
-          setActiveAttemptId(null);
-          loadStudentData();
-        }}]
+        [{
+          text: 'OK', onPress: () => {
+            setView('student');
+            setActiveExam(null);
+            setActiveAttemptId(null);
+            loadStudentData();
+          }
+        }]
       );
     } catch (err) {
       Alert.alert('Submit Error', err.message);
@@ -529,7 +531,7 @@ export default function App() {
         const res = await apiCall(`/student/${currentUser.userId}/exams/${activeExam.exam_id}/time-remaining?attempt_id=${activeAttemptId}`);
         const remaining = res.remaining_seconds;
         setTimeRemaining(remaining);
-        
+
         if (remaining <= 0) {
           clearInterval(timerRef.current);
           Alert.alert("Time's Up!", 'Submitting your exam attempt automatically.', [
@@ -570,7 +572,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
-      
+
       {/* HEADER BANNER */}
       <View style={styles.header}>
         <View style={styles.headerTitleContainer}>
@@ -812,7 +814,7 @@ export default function App() {
                     {/* CREATE EXAM FORM */}
                     <View style={styles.card}>
                       <Text style={styles.sectionTitle}>Create New Exam Paper</Text>
-                      
+
                       <Text style={styles.label}>Course Code</Text>
                       <TextInput
                         style={styles.input}
@@ -907,7 +909,7 @@ export default function App() {
                 {addingQuestionExamId && (
                   <View style={styles.card}>
                     <Text style={styles.sectionTitle}>Add Question to ID: {addingQuestionExamId}</Text>
-                    
+
                     <Text style={styles.label}>Question Text</Text>
                     <TextInput
                       style={styles.input}
@@ -976,7 +978,7 @@ export default function App() {
                 {instructorTab === 'eligibility' && (
                   <View style={styles.card}>
                     <Text style={styles.sectionTitle}>Assign Student Eligibility</Text>
-                    
+
                     <Text style={styles.label}>Select Exam Paper</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                       <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -1006,6 +1008,40 @@ export default function App() {
                     <TouchableOpacity style={styles.primaryButton} onPress={handleAssignStudents}>
                       <Text style={styles.primaryButtonText}>Enroll Students</Text>
                     </TouchableOpacity>
+
+                    {/* AVAILABLE STUDENTS DIRECTORY */}
+                    <Text style={[styles.label, { marginTop: 20, marginBottom: 8, borderTopWidth: 1, borderTopColor: '#27272a', paddingTop: 16 }]}>
+                      Available Students Database:
+                    </Text>
+                    {usersList.filter(u => u.role === 'student').length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12, fontStyle: 'italic' }}>No students registered in the database.</Text>
+                    ) : (
+                      usersList.filter(u => u.role === 'student').map((stud, idx) => (
+                        <View key={stud.userId || idx} style={[styles.listItem, { paddingVertical: 8 }]}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.itemTitle, { fontSize: 13 }]}>{stud.fullname}</Text>
+                            <Text style={[styles.itemSubtitle, { fontSize: 10 }]}>ID: {stud.userId} • {stud.email}</Text>
+                          </View>
+                          <TouchableOpacity 
+                            style={[styles.smallButton, { backgroundColor: '#27272a', borderWidth: 1, borderColor: '#3f3f46' }]}
+                            onPress={() => {
+                              const currentVal = eligibleStudents ? eligibleStudents.trim() : '';
+                              if (currentVal === '') {
+                                setEligibleStudents(String(stud.userId));
+                              } else {
+                                const ids = currentVal.split(',').map(s => s.trim()).filter(Boolean);
+                                if (!ids.includes(String(stud.userId))) {
+                                  ids.push(String(stud.userId));
+                                }
+                                setEligibleStudents(ids.join(', '));
+                              }
+                            }}
+                          >
+                            <Text style={{ color: '#6366f1', fontSize: 11, fontWeight: 'bold' }}>+ Add</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    )}
                   </View>
                 )}
 
@@ -1084,7 +1120,7 @@ export default function App() {
                         <Text style={styles.activeChipText}>Search</Text>
                       </TouchableOpacity>
                     </View>
-                    
+
                     {availableExams.length === 0 ? (
                       <Text style={{ color: '#71717a', textAlign: 'center', marginVertical: 20 }}>Enter an Instructor ID above to list available exams.</Text>
                     ) : (
@@ -1290,7 +1326,7 @@ export default function App() {
               <Ionicons name="settings" size={24} color="#6366f1" />
               <Text style={styles.modalTitle}>API Server Config</Text>
             </View>
-            
+
             <Text style={styles.label}>Backend API URL Base</Text>
             <TextInput
               style={styles.input}
@@ -1300,7 +1336,7 @@ export default function App() {
               onChangeText={setTempApiBase}
               autoCapitalize="none"
             />
-            
+
             <Text style={styles.modalInfo}>
               Use <Text style={{ fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', color: '#6366f1' }}>http://10.0.2.2:5000/api</Text> for Android Emulator loopback, or your computer's local IP address if deploying on physical devices.
             </Text>
