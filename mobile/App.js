@@ -457,13 +457,17 @@ export default function App() {
                 }
               });
 
-              setActiveExam(exam);
+              setActiveExam({
+                ...exam,
+                ...res,
+                questions: res.questions || exam.questions || []
+              });
               setActiveInstructorId(finalInstructorId);
-              setActiveAttemptId(res.attempt.attempt_id);
-              setQuestions(exam.questions || []);
+              setActiveAttemptId(res.attempt_id);
+              setQuestions(res.questions || exam.questions || []);
               setCurrentQuestionIndex(0);
               setStudentAnswers({});
-              setTimeRemaining(res.attempt.remaining_seconds || exam.duration);
+              setTimeRemaining(res.duration || exam.duration);
               setView('exam-runner');
             } catch (err) {
               Alert.alert('Start Error', err.message);
