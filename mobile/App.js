@@ -994,12 +994,6 @@ export default function App() {
                                 <Text style={{ color: '#fff', fontSize: 12 }}>Edit</Text>
                               </TouchableOpacity>
 
-                              <TouchableOpacity
-                                style={[styles.smallButton, { backgroundColor: '#27272a' }]}
-                                onPress={() => handleViewAttempts(ex)}
-                              >
-                                <Text style={{ color: '#fff', fontSize: 12 }}>Attempts</Text>
-                              </TouchableOpacity>
                             </View>
                           </View>
                         );
@@ -1269,10 +1263,28 @@ export default function App() {
                       </View>
                     ) : (
                       <View style={styles.card}>
-                        <Text style={styles.sectionTitle}>
-                          {viewingAttemptsExam ? `Submissions: ${viewingAttemptsExam.exam_name}` : 'Select an exam from Manage tab'}
-                        </Text>
-                        {examAttempts.length === 0 ? (
+                        <Text style={styles.sectionTitle}>View Exam Submissions</Text>
+                        
+                        <Text style={styles.label}>Select Exam Paper</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            {exams.map(ex => (
+                              <TouchableOpacity
+                                key={ex.exam_id}
+                                style={[styles.examChip, viewingAttemptsExam?.exam_id === ex.exam_id && styles.examChipActive]}
+                                onPress={() => handleViewAttempts(ex)}
+                              >
+                                <Text style={[styles.examChipText, viewingAttemptsExam?.exam_id === ex.exam_id && styles.examChipTextActive]}>
+                                  {ex.exam_name}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        </ScrollView>
+
+                        {!viewingAttemptsExam ? (
+                          <Text style={{ color: '#71717a', textAlign: 'center', marginVertical: 20 }}>Select an exam above to view submissions.</Text>
+                        ) : examAttempts.length === 0 ? (
                           <Text style={{ color: '#71717a', textAlign: 'center', marginTop: 20 }}>No submissions found for this exam.</Text>
                         ) : (
                           examAttempts.map((at, i) => (
